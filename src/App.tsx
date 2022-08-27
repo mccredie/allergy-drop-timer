@@ -1,4 +1,5 @@
-import { useEffect, useReducer } from 'react';
+import { useEffect, useReducer, forwardRef } from 'react';
+import { toWordsOrdinal } from 'number-to-words';
 
 import LinearProgress from '@mui/material/LinearProgress';
 import CardContent from '@mui/material/CardContent';
@@ -11,8 +12,11 @@ import ListItemIcon from '@mui/material/ListItemIcon';
 import ListItemText from '@mui/material/ListItemText';
 import Checkbox from '@mui/material/Checkbox';
 import Button from '@mui/material/Button';
+import Slide from '@mui/material/Slide';
+import { TransitionProps } from '@mui/material/transitions';
 
 import './App.css';
+import { DropAction, DropState, dropReducer } from './features/drops';
 
 interface DropTodoItemProps {
   children: string,
@@ -26,70 +30,41 @@ function DropTodoItem({children, complete}: DropTodoItemProps) {
     </ListItemIcon>
     <ListItemText sx={{
       textDecoration: complete ? "line-through" : "none"
-    }} primary={`Take dose ${children}`} />
+    }} primary={`Take ${children} dose`} />
   </ListItem>;
 }
 
-interface State {
-  dosesTaken: [string, boolean][],
-  lastDoseTime: number,
-  waitDialogOpen: boolean
-}
-
-enum Action {
-  takeDose,
-  tick
-}
-
-function reducer(state: State, action: Action) {
-  switch(action) {
-    case Action.takeDose:
-      const nextDose = (state.dosesTaken.find(([_, taken]) => !taken) || [ "", false])[0];
-      const dosesTaken: [string, boolean][] = state.dosesTaken.map(([dose, taken]) => {
-          if (dose === nextDose) {
-            return [dose, true];
-          } else {
-            return [dose, taken];
-          }
-      })
-
-      return {
-        dosesTaken,
-        waitDialogOpen: true,
-        lastDoseTime: Date.now()
-      };
-    case Action.tick:
-      if (state.waitDialogOpen && Date.now() > state.lastDoseTime + 120 * 1000) {
-        return { ...state, waitDialogOpen: false}
-      }
-      return state;
-    default:
-      return state;
-  }
-}
+const Transition = forwardRef(function Transition(
+  props: TransitionProps & {
+    children: React.ReactElement<any, any>;
+  },
+  ref: React.Ref<unknown>,
+) {
+  return <Slide direction="right" ref={ref} {...props} />;
+});
 
 interface AppProps {
-  doses?: string[]
+  doses?: number
 }
 
-function App({doses=[]}: AppProps) {
-  const initDoses: State['dosesTaken']  = doses.map((dose) => [dose, false]);
+function App({doses=1}: AppProps) {
+  const initDoses: DropState['dosesTaken'] = Array(doses).fill(false);
   const [
     {
       dosesTaken,
       waitDialogOpen,
     },
     dispatch
-  ] = useReducer(reducer, {
+  ] = useReducer(dropReducer, {
     dosesTaken: initDoses,
     waitDialogOpen: false,
     lastDoseTime: 0
   });
   const handleClick = () => {
-    dispatch(Action.takeDose)
+    dispatch(DropAction.takeDose)
   }
   useEffect(() => {
-    setInterval(() => dispatch(Action.tick), 500);
+    setInterval(() => dispatch(DropAction.tick), 500);
   }, [])
 
   return (
@@ -97,21 +72,21 @@ function App({doses=[]}: AppProps) {
       <Paper sx={{mx: "auto", my: 3, width: 250}}>
         <List>
           {
-            dosesTaken.map(([dose, taken]) =>
-              <DropTodoItem complete={taken}>{dose}</DropTodoItem>
+            dosesTaken.map((taken, index) =>
+              <DropTodoItem complete={taken}>{toWordsOrdinal(index + 1)}</DropTodoItem>
             )
           }
         </List>
         <Button onClick={handleClick} >Take Next Dose</Button>
       </Paper>
-      <Dialog open={waitDialogOpen} >
-        <Card>
-          <CardContent>
-            <h5>Hold under tongue for 2 minutes.</h5>
-            <LinearProgress variant="indeterminate" value={0} />
-          </CardContent>
-        </Card>
-      </Dialog>
+        <Dialog open={waitDialogOpen} TransitionComponent={Transition} >
+          <Card>
+            <CardContent>
+              <h5>Hold under tongue for 2 minutes.</h5>
+              <LinearProgress variant="indeterminate" value={0} />
+            </CardContent>
+          </Card>
+        </Dialog>
     </div>
   );
 }

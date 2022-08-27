@@ -55,5 +55,9 @@
       "last 1 firefox version",
       "last 1 safari version"
     ]
+  },
+  "devDependencies": {
+    "@types/number-to-words": "^1.2.1",
+    "number-to-words": "^1.2.4"
   }
 }

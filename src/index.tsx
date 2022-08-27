@@ -10,7 +10,7 @@ const root = ReactDOM.createRoot(
 );
 root.render(
   <React.StrictMode>
-    <App doses={["A", "B", "C"]} />
+    <App doses={3} />
   </React.StrictMode>
 );
 
